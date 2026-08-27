@@ -1,0 +1,211 @@
+---
+title: "Tugas Kuliah Pertemuan 2"
+author: "Nabila Yola Zahrani M0401241045"
+date: "2026-08-27"
+output: html_document
+---
+
+# [No 1]{style="color:#db84c5;"} 
+```{r setup, include=FALSE}
+library(prais)
+library(lmtest)
+library(ggplot2)
+```
+
+## Data
+```{r}
+data <- data.frame(
+  periode = 1:20,
+  market_share = c(
+    3.63, 4.20, 3.33, 4.54, 2.89,
+    4.87, 4.90, 5.29, 6.18, 7.20,
+    7.25, 6.09, 6.80, 8.65, 8.43,
+    8.29, 7.18, 7.90, 8.45, 8.23
+  ),
+  price = c(
+    0.97, 0.95, 0.99, 0.91, 0.98,
+    0.90, 0.89, 0.86, 0.85, 0.82,
+    0.79, 0.83, 0.81, 0.77, 0.76,
+    0.80, 0.83, 0.79, 0.76, 0.78
+  )
+)
+
+data
+```
+
+## Pemodelan Regresi Deret Waktu
+```{r}
+model <- lm(price ~ periode, data = data)
+
+summary(model)
+```
+
+## Hasil Model
+```{r}
+data$residual <- residuals(model)
+
+data
+```
+
+## Pemeriksaan Autokorelasi
+### Plot Residual
+```{r}
+ggplot(data, aes(x = periode, y = residual)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Plot Residual terhadap Waktu",
+    x = "Periode",
+    y = "Residual"
+  ) +
+  theme_minimal()
+```
+
+### Durbin-Watson
+```{r}
+dwtest(model)
+```
+
+### ACF Residual
+```{r}
+acf(
+  data$residual,
+  main = "ACF Residual"
+)
+```
+
+## Penanganan Autokorelasi
+
+```{r}
+model_pw <- prais_winsten(
+  price ~ periode,
+  data = data,
+  index = "periode"
+)
+
+summary(model_pw)
+```
+## Pemeriksaan Setelah Penanganan
+```{r}
+dwtest(model_pw)
+```
+```{r}
+dwtest(model)
+dwtest(model_pw)
+```
+## Kesimpulan
+Model awalnya:
+$Price_t$ = 0.97279−0.01150t
+
+dan statistik Durbin-Watson sekitar:
+DW = 1.413
+
+yang mengarah pada autokorelasi positif, sehingga perlu dilanjutkan dengan pemeriksaan signifikansi Durbin-Watson dan, jika signifikan, penanganan menggunakan model seperti Prais-Winsten.
+
+# [No 2]{style="color:#db84c5;"} 
+
+## Data
+```{r}
+```{r data}
+data <- data.frame(
+  year = 1975:2014,
+  sales = c(
+    11.7, 12.0, 12.3, 12.8, 13.1,
+    13.6, 13.9, 14.4, 14.7, 15.3,
+    15.5, 15.8, 16.1, 16.6, 16.9,
+    16.7, 16.9, 17.4, 17.6, 17.9,
+    18.0, 17.9, 18.0, 18.2, 18.2,
+    18.3, 18.6, 19.2, 19.3, 19.5,
+    19.2, 19.3, 19.5, 20.0, 20.0,
+    19.9, 19.8, 19.9, 20.2, 21.0
+  ),
+  advertising = c(
+    9.4, 9.6, 10.0, 10.4, 10.8,
+    10.9, 11.7, 12.2, 12.5, 12.9,
+    13.0, 13.2, 13.8, 14.2, 14.6,
+    14.4, 15.0, 15.4, 15.7, 15.9,
+    15.9, 16.0, 16.3, 16.2, 16.8,
+    17.3, 17.6, 18.1, 18.3, 18.5,
+    18.7, 18.9, 19.2, 20.0, 20.0,
+    20.3, 20.4, 21.0, 21.5, 22.1
+  )
+)
+
+head(data)
+tail(data)
+nrow(data)
+```
+
+## Regresi
+```{r}
+model_ms <- lm(
+  market_share ~ periode,
+  data = data
+)
+
+summary(model_ms)
+```
+```{r}
+model_price <- lm(
+  price ~ periode,
+  data = data
+)
+
+summary(model_price)
+```
+
+## Residual
+```{r}
+data$residual <- residuals(model)
+```
+
+## Plot Residual
+```{r}
+library(ggplot2)
+
+ggplot(data, aes(x = periode, y = residual)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(
+    yintercept = 0,
+    linetype = "dashed"
+  ) +
+  labs(
+    title = "Plot Residual terhadap Waktu",
+    x = "Periode",
+    y = "Residual"
+  ) +
+  theme_minimal()
+```
+
+## Durbin Watson
+```{r}
+library(lmtest)
+
+dwtest(model_ms)
+```
+```{r}
+dwtest(model_price)
+```
+
+## ACF Residual
+```{r}
+acf(
+  residuals(model_ms),
+  main = "ACF Residual Market Share"
+)
+```
+```{r}
+acf(
+  residuals(model_price),
+  main = "ACF Residual Price"
+)
+```
+
+## Kesimpulan
+Karena:
+0.05075 > 0.05
+maka H₀ tidak ditolak.
+
+Berdasarkan uji Durbin-Watson pada taraf nyata 5%, tidak terdapat bukti yang cukup untuk menyatakan adanya autokorelasi positif pada residual model.
