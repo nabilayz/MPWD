@@ -1,0 +1,415 @@
+---
+title: "MPDW Tugas Pertemuan 2"
+author: "Nabila Yola Zahrani M0401241045"
+date: "2026-08-26"
+output: html_document
+---
+
+## [Data observasi]{style="color:#db84c5;"}
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(forecast)
+library(knitr)
+library(rmarkdown)
+
+# Membaca data
+data <- read_excel("~/Downloads/Informasi Kurs Jisdor.xlsx", skip = 4)
+
+# Cek nama kolom
+names(data)
+
+# Mengambil data observasi 196-390
+data_aku <- data %>%
+  filter(NO >= 196 & NO <= 390) %>%
+  select(NO, Tanggal, Kurs)
+
+# Mengubah tanggal menjadi format Date
+data_aku$Tanggal <- as.Date(
+  data_aku$Tanggal,
+  format = "%d/%m/%Y"
+)
+
+# Melihat data
+head(data_aku)
+tail(data_aku)
+
+# Jumlah observasi
+nrow(data_aku)
+```
+
+## [Eksplorasi Data]{style="color:#db84c5;"}
+
+```{r}
+# Eksplorasi Data
+summary(data_aku$Kurs)
+
+mean(data_aku$Kurs)
+sd(data_aku$Kurs)
+min(data_aku$Kurs)
+max(data_aku$Kurs)
+```
+
+```{r}
+# Grafik Time Series
+ggplot(data_aku, aes(x = Tanggal, y = Kurs)) +
+  geom_line() +
+  labs(
+    title = "Pergerakan Kurs Jisdor IDR/USD",
+    subtitle = "Observasi 196–390",
+    x = "Tanggal",
+    y = "Kurs (IDR/USD)"
+  ) +
+  theme_minimal()
+```
+
+## [SMA]{style="color:#db84c5;"}
+
+```{r}
+library(TTR)
+# SMA orde 3
+
+data_aku$SMA <- NA
+
+for (i in 4:nrow(data_aku)) {
+  data_aku$SMA[i] <- mean(
+    data_aku$Kurs[(i-3):(i-1)]
+  )
+}
+
+head(data_aku[, c("Tanggal", "Kurs", "SMA")])
+
+# Forecast error
+data_aku$error_SMA <- data_aku$Kurs - data_aku$SMA
+
+# Absolute error
+data_aku$abs_error_SMA <- abs(data_aku$error_SMA)
+
+# Squared error
+data_aku$sq_error_SMA <- data_aku$error_SMA^2
+
+# APE
+data_aku$APE_SMA <- abs(data_aku$error_SMA / data_aku$Kurs) * 100
+
+MAE_SMA <- mean(data_aku$abs_error_SMA, na.rm = TRUE)
+
+SSE_SMA <- sum(data_aku$sq_error_SMA, na.rm = TRUE)
+
+MSE_SMA <- mean(data_aku$sq_error_SMA, na.rm = TRUE)
+
+RMSE_SMA <- sqrt(MSE_SMA)
+
+MAPE_SMA <- mean(data_aku$APE_SMA, na.rm = TRUE)
+
+MAE_SMA
+SSE_SMA
+MSE_SMA
+RMSE_SMA
+MAPE_SMA
+```
+
+## [DMA]{style="color:#db84c5;"}
+
+```{r}
+# DMA
+S1 <- SMA(data_aku$Kurs, n = 3)
+
+S2 <- SMA(S1, n = 3)
+
+data_aku$S1 <- S1
+data_aku$S2 <- S2
+
+# Nilai level
+data_aku$a_DMA <- 2 * data_aku$S1 - data_aku$S2
+
+# Nilai trend
+data_aku$b_DMA <- (2 / (3 - 1)) *
+  (data_aku$S1 - data_aku$S2)
+
+# Forecast satu periode ke depan
+data_aku$DMA <- lag(data_aku$a_DMA, 1) +
+  lag(data_aku$b_DMA, 1)
+
+data_aku$error_DMA <- data_aku$Kurs - data_aku$DMA
+
+data_aku$abs_error_DMA <- abs(data_aku$error_DMA)
+
+data_aku$sq_error_DMA <- data_aku$error_DMA^2
+
+data_aku$APE_DMA <-
+  abs(data_aku$error_DMA / data_aku$Kurs) * 100
+
+MAE_DMA <- mean(data_aku$abs_error_DMA, na.rm = TRUE)
+
+SSE_DMA <- sum(data_aku$sq_error_DMA, na.rm = TRUE)
+
+MSE_DMA <- mean(data_aku$sq_error_DMA, na.rm = TRUE)
+
+RMSE_DMA <- sqrt(MSE_DMA)
+
+MAPE_DMA <- mean(data_aku$APE_DMA, na.rm = TRUE)
+
+MAE_DMA
+SSE_DMA
+MSE_DMA
+RMSE_DMA
+MAPE_DMA
+```
+
+## [SES]{style="color:#db84c5;"}
+
+```{r}
+# SES
+alpha <- seq(0.01, 0.99, by = 0.01)
+
+hasil_SES <- data.frame(
+  alpha = alpha,
+  RMSE = NA
+)
+
+for (i in 1:length(alpha)) {
+  
+  model <- ses(
+    data_aku$Kurs,
+    alpha = alpha[i],
+    initial = "simple"
+  )
+  
+  error <- data_aku$Kurs - fitted(model)
+  
+  hasil_SES$RMSE[i] <-
+    sqrt(mean(error^2, na.rm = TRUE))
+}
+
+# Alpha terbaik
+hasil_SES[which.min(hasil_SES$RMSE), ]
+
+alpha_terbaik <- hasil_SES$alpha[
+  which.min(hasil_SES$RMSE)
+]
+
+alpha_terbaik
+
+#Model
+model_SES <- ses(
+  data_aku$Kurs,
+  alpha = alpha_terbaik,
+  h = 1
+)
+
+data_aku$SES <- fitted(model_SES)
+
+# Error
+data_aku$error_SES <-
+  data_aku$Kurs - data_aku$SES
+
+data_aku$abs_error_SES <-
+  abs(data_aku$error_SES)
+
+data_aku$sq_error_SES <-
+  data_aku$error_SES^2
+
+data_aku$APE_SES <-
+  abs(data_aku$error_SES / data_aku$Kurs) * 100
+
+```
+
+```{r}
+#Evaluasi
+MAE_SES <- mean(data_aku$abs_error_SES, na.rm = TRUE)
+
+SSE_SES <- sum(data_aku$sq_error_SES, na.rm = TRUE)
+
+MSE_SES <- mean(data_aku$sq_error_SES, na.rm = TRUE)
+
+RMSE_SES <- sqrt(MSE_SES)
+
+MAPE_SES <- mean(data_aku$APE_SES, na.rm = TRUE)
+
+MAE_SES
+SSE_SES
+MSE_SES
+RMSE_SES
+MAPE_SES
+```
+
+## [DES]{style="color:#db84c5;"}
+
+```{r}
+#DES
+# Double Exponential Smoothing (DES)
+model_DES <- holt(
+  data_aku$Kurs,
+  h = 1,
+  damped = FALSE
+)
+
+model_DES
+
+```
+
+```{r}
+alpha_DES <- model_DES$model$par["alpha"]
+beta_DES <- model_DES$model$par["beta"]
+
+alpha_DES
+beta_DES
+```
+
+```{r}
+data_aku$DES <- as.numeric(fitted(model_DES))
+head(data_aku[, c("Tanggal", "Kurs", "DES")])
+```
+
+```{r}
+data_aku$error_DES <- data_aku$Kurs - data_aku$DES
+
+data_aku$abs_error_DES <- abs(data_aku$error_DES)
+
+data_aku$sq_error_DES <- data_aku$error_DES^2
+
+data_aku$APE_DES <- 
+  abs(data_aku$error_DES / data_aku$Kurs) * 100
+```
+
+```{r}
+MAE_DES <- mean(
+  data_aku$abs_error_DES,
+  na.rm = TRUE
+)
+
+SSE_DES <- sum(
+  data_aku$sq_error_DES,
+  na.rm = TRUE
+)
+
+MSE_DES <- mean(
+  data_aku$sq_error_DES,
+  na.rm = TRUE
+)
+
+RMSE_DES <- sqrt(MSE_DES)
+
+MAPE_DES <- mean(
+  data_aku$APE_DES,
+  na.rm = TRUE
+)
+
+MAE_DES
+SSE_DES
+MSE_DES
+RMSE_DES
+MAPE_DES
+```
+
+```{r}
+forecast_DES <- forecast(
+  model_DES,
+  h = 1
+)
+
+forecast_DES
+```
+
+```{r}
+forecast_DES$mean
+```
+
+## [Tabel perbandingan]{style="color:#db84c5;"}
+
+```{r}
+#Tabel Perbandingan
+evaluasi <- data.frame(
+  Metode = c("SMA", "DMA", "SES", "DES"),
+  
+  SSE = c(
+    SSE_SMA,
+    SSE_DMA,
+    SSE_SES,
+    SSE_DES
+  ),
+  
+  MSE = c(
+    MSE_SMA,
+    MSE_DMA,
+    MSE_SES,
+    MSE_DES
+  ),
+  
+  RMSE = c(
+    RMSE_SMA,
+    RMSE_DMA,
+    RMSE_SES,
+    RMSE_DES
+  ),
+  
+  MAPE = c(
+    MAPE_SMA,
+    MAPE_DMA,
+    MAPE_SES,
+    MAPE_DES
+  )
+)
+
+evaluasi
+```
+
+```{r}
+evaluasi %>%
+  arrange(RMSE)
+```
+
+## [Grafik perbandingan actual vs forecast]{style="color:#db84c5;"}
+
+```{r}
+ggplot(data_aku, aes(x = Tanggal)) +
+  geom_line(aes(y = Kurs), linewidth = 0.8) +
+  geom_line(aes(y = SMA), linewidth = 0.6, na.rm = TRUE) +
+  geom_line(aes(y = DMA), linewidth = 0.6, na.rm = TRUE) +
+  geom_line(aes(y = SES), linewidth = 0.6, na.rm = TRUE) +
+  geom_line(aes(y = DES), linewidth = 0.6, na.rm = TRUE) +
+  labs(
+    title = "Perbandingan Actual dan Hasil Pemulusan",
+    x = "Tanggal",
+    y = "Kurs IDR/USD"
+  ) +
+  theme_minimal()
+```
+
+## [Forecast periode berikutnya]{style="color:#db84c5;"}
+
+```{r}
+forecast_SMA <- tail(
+  SMA(data_aku$Kurs, n = 3),
+  1
+)
+
+forecast_DMA <- tail(
+  data_aku$a_DMA + data_aku$b_DMA,
+  1
+)
+
+forecast_SES <- forecast(
+  model_SES,
+  h = 1
+)$mean
+
+forecast_DES <- forecast(
+  model_DES,
+  h = 1
+)$mean
+
+forecast_akhir <- data.frame(
+  Metode = c("SMA", "DMA", "SES", "DES"),
+  Forecast = c(
+    forecast_SMA,
+    forecast_DMA,
+    forecast_SES,
+    forecast_DES
+  )
+)
+
+forecast_akhir
+```
