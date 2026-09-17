@@ -1,0 +1,678 @@
+---
+title: "MPDW - Tugas Pertemuan 5"
+author: "Nabila Yola Zahrani M0401241045"
+date: "2026-09-17"
+output: html_document
+---
+
+# Latihan 1 - MA(2){style="color:#db84c5;"}
+
+## [Persiapan]{style="color:#db84c5;"}
+
+```{r}
+set.seed(123)
+
+theta1 <- 0.4
+theta2 <- 0.6
+n <- 300
+```
+
+## [Bangkitkan MA(2) Secara Manual]{style="color:#db84c5;"}
+
+```{r}
+e <- rnorm(n)
+
+y_ma2 <- numeric(n)
+
+y_ma2[1] <- e[1]
+y_ma2[2] <- e[2] + theta1 * e[1]
+
+for (t in 3:n) {
+  y_ma2[t] <- e[t] +
+    theta1 * e[t-1] +
+    theta2 * e[t-2]
+}
+
+y_ma2 <- ts(y_ma2)
+
+head(y_ma2)
+```
+
+## [Bangkitkan MA(2) dengan arima.sim]{style="color:#db84c5;"}
+
+```{r}
+set.seed(123)
+
+ma2_sim <- arima.sim(
+  model = list(ma = c(theta1, theta2)),
+  n = n
+)
+
+head(ma2_sim)
+```
+
+## [Plot Time Series]{style="color:#db84c5;"}
+
+```{r}
+plot(
+  y_ma2,
+  main = "Time Series MA(2) Manual",
+  xlab = "Time",
+  ylab = "Y"
+)
+
+plot(
+  ma2_sim,
+  main = "Time Series MA(2) arima.sim",
+  xlab = "Time",
+  ylab = "Y"
+)
+```
+
+## [Plot ACF]{style="color:#db84c5;"}
+
+```{r}
+acf(
+  y_ma2,
+  main = "ACF MA(2) Manual"
+)
+
+acf(
+  ma2_sim,
+  main = "ACF MA(2) arima.sim"
+)
+```
+
+## [Plot PACF]{style="color:#db84c5;"}
+
+```{r}
+pacf(
+  y_ma2,
+  main = "PACF MA(2) Manual"
+)
+
+pacf(
+  ma2_sim,
+  main = "PACF MA(2) arima.sim"
+)
+```
+
+## [Plot EACF]{style="color:#db84c5;"}
+
+```{r}
+library(TSA)
+
+eacf(y_ma2)
+```
+
+## [Identifikasi Stasioneritas]{style="color:#db84c5;"}
+
+```{r}
+plot(
+  y_ma2,
+  main = "Identifikasi Stasioneritas MA(2)",
+  xlab = "Time",
+  ylab = "Y"
+)
+```
+
+## [Autokorelasi Teoritis]{style="color:#db84c5;"}
+
+```{r}
+rho1_ma2 <- theta1 * (1 + theta1 * theta2) /
+  (1 + theta1^2 + theta2^2)
+
+rho2_ma2 <- theta2 /
+  (1 + theta1^2 + theta2^2)
+
+rho_teori_ma2 <- c(
+  1,
+  rho1_ma2,
+  rho2_ma2,
+  rep(0, 8)
+)
+
+rho_teori_ma2
+```
+
+## [Autokorelasi Data Bangkitan]{style="color:#db84c5;"}
+
+```{r}
+acf_ma2 <- acf(
+  y_ma2,
+  lag.max = 10,
+  plot = FALSE
+)
+
+rho_data_ma2 <- as.numeric(acf_ma2$acf)
+
+rho_data_ma2
+```
+
+## [Perbandingan Autokorelasi]{style="color:#db84c5;"}
+
+```{r}
+hasil_ma2 <- data.frame(
+  Lag = 0:10,
+  ACF_Data = c(1, rho_data_ma2),
+  ACF_Teoritis = rho_teori_ma2
+)
+
+
+hasil_ma2
+```
+
+
+## [Latihan 2 — AR(2)]{style="color:#db84c5;"}
+
+Diketahui model AR(2):
+
+\[
+X_t = 0.5X_{t-1} + 0.2X_{t-2} + \varepsilon_t
+\]
+
+dengan jumlah pengamatan \(n=300\).
+
+## [Persiapan]{style="color:#db84c5;"}
+
+```{r}
+# Menentukan parameter
+phi1 <- 0.5
+phi2 <- 0.2
+n <- 300
+
+# Seed agar hasil dapat direplikasi
+set.seed(123)
+```
+
+## [Bangkitkan AR(2) Secara Manual]{style="color:#db84c5;"}
+
+```{r}
+# Membuat error/residual
+epsilon <- rnorm(n, mean = 0, sd = 1)
+
+# Menyiapkan vektor untuk data AR(2)
+x_ar2 <- numeric(n)
+
+# Nilai awal
+x_ar2[1] <- epsilon[1]
+x_ar2[2] <- phi1 * x_ar2[1] + epsilon[2]
+
+# Membentuk data AR(2) secara manual
+for (t in 3:n) {
+  x_ar2[t] <- phi1 * x_ar2[t-1] +
+              phi2 * x_ar2[t-2] +
+              epsilon[t]
+}
+
+# Mengubah menjadi objek time series
+y_ar2_manual <- ts(x_ar2)
+
+# Melihat 10 data pertama
+head(y_ar2_manual, 10)
+```
+
+## [Bangkitkan AR(2) Menggunakan arima.sim]{style="color:#db84c5;"}
+
+```{r}
+# Membentuk AR(2) menggunakan fungsi arima.sim
+set.seed(123)
+
+y_ar2 <- arima.sim(
+  model = list(ar = c(phi1, phi2)),
+  n = n
+)
+
+# Melihat 10 data pertama
+head(y_ar2, 10)
+```
+
+## [Plot Data AR(2)]{style="color:#db84c5;"}
+
+```{r}
+plot(
+  y_ar2,
+  main = "Time Series AR(2)",
+  ylab = "X_t",
+  xlab = "Time"
+)
+```
+
+## [ACF]{style="color:#db84c5;"}
+
+```{r}
+acf(
+  y_ar2,
+  main = "ACF AR(2)"
+)
+```
+
+## [PACF]{style="color:#db84c5;"}
+
+```{r}
+pacf(
+  y_ar2,
+  main = "PACF AR(2)"
+)
+```
+
+## [EACF]{style="color:#db84c5;"}
+
+```{r}
+# Jika package TSA belum tersedia, install terlebih dahulu:
+# install.packages("TSA")
+
+library(TSA)
+
+eacf(y_ar2)
+```
+
+## [Pemeriksaan Kestasioneran]{style="color:#db84c5;"}
+
+```{r}
+# Plot data untuk melihat kestasioneran
+plot(
+  y_ar2,
+  main = "Pemeriksaan Kestasioneran AR(2)",
+  ylab = "X_t",
+  xlab = "Time"
+)
+
+# ACF untuk melihat pola peluruhan
+acf(
+  y_ar2,
+  main = "ACF untuk Pemeriksaan Kestasioneran"
+)
+```
+
+## [Autokorelasi Teoretis AR(2)]{style="color:#db84c5;"}
+
+Untuk model AR(2):
+
+\[
+X_t = \phi_1X_{t-1}+\phi_2X_{t-2}+\varepsilon_t
+\]
+
+autokorelasi teoritis dapat diperoleh menggunakan fungsi `ARMAacf()`.
+
+```{r}
+# Menghitung autokorelasi teoritis AR(2)
+acf_teoritis <- ARMAacf(
+  ar = c(phi1, phi2),
+  lag.max = 10
+)
+
+acf_teoritis
+```
+
+## [Autokorelasi Sampel AR(2)]{style="color:#db84c5;"}
+
+```{r}
+# Menghitung ACF sampel
+acf_sampel <- acf(
+  y_ar2,
+  lag.max = 10,
+  plot = FALSE
+)
+
+# Melihat jumlah nilai ACF
+length(as.numeric(acf_sampel$acf))
+
+
+```
+
+```{r}
+acf_sampel_table <- data.frame(
+  Lag = 1:10,
+  ACF_Sampel = as.numeric(acf_sampel$acf)
+)
+
+acf_sampel_table
+```
+
+## [Perbandingan ACF Teoretis dan Sampel]{style="color:#db84c5;"}
+
+```{r}
+# Membuat tabel perbandingan
+perbandingan_acf <- data.frame(
+  Lag = 1:10,
+  ACF_Teoritis = acf_teoritis[1:10],
+  ACF_Sampel = as.numeric(acf_sampel$acf)
+)
+
+perbandingan_acf
+```
+
+## [Visualisasi ACF Teoretis dan Sampel]{style="color:#db84c5;"}
+
+```{r}
+# Plot ACF sampel
+acf(
+  y_ar2,
+  lag.max = 10,
+  main = "Perbandingan ACF AR(2)"
+)
+
+# Menambahkan ACF teoritis sebagai titik
+points(
+  0:10,
+  acf_teoritis,
+  col = "red",
+  pch = 19
+)
+```
+
+## [Nilai Autokorelasi Teoretis Lag 1 dan Lag 2]{style="color:#db84c5;"}
+
+Untuk AR(2), persamaan Yule-Walker memberikan:
+
+\[
+\rho_1 = \frac{\phi_1}{1-\phi_2}
+\]
+
+sehingga:
+
+\[
+\rho_1 = \frac{0.5}{1-0.2}=0.625
+\]
+
+Kemudian:
+
+\[
+\rho_2 = \phi_1\rho_1+\phi_2
+\]
+
+sehingga:
+
+\[
+\rho_2=(0.5)(0.625)+0.2=0.5125
+\]
+
+```{r}
+# Menghitung rho teoritis secara manual
+
+rho1 <- phi1 / (1 - phi2)
+rho2 <- phi1 * rho1 + phi2
+
+cat("Autokorelasi teoritis lag 1 =", rho1, "\n")
+cat("Autokorelasi teoritis lag 2 =", rho2, "\n")
+```
+
+## [Kesimpulan]{style="color:#db84c5;"}
+
+```{r}
+cat(
+  "Model yang digunakan adalah AR(2) dengan phi1 =",
+  phi1,
+  "dan phi2 =",
+  phi2,
+  "serta jumlah pengamatan sebanyak",
+  n,
+  ".\n"
+)
+
+cat(
+  "Autokorelasi teoritis lag 1 =", round(rho1, 4), "\n"
+)
+
+cat(
+  "Autokorelasi teoritis lag 2 =", round(rho2, 4), "\n"
+)
+```
+
+
+## [Latihan 3 — ARMA(2,2)]{style="color:#db84c5;"}
+
+Diketahui model ARMA(2,2):
+
+\[
+X_t = 0.5X_{t-1} + 0.2X_{t-2}
+      + \varepsilon_t
+      + 0.4\varepsilon_{t-1}
+      + 0.6\varepsilon_{t-2}
+\]
+
+dengan jumlah pengamatan \(n=300\).
+
+## [Persiapan]{style="color:#db84c5;"}
+
+```{r}
+# Menentukan parameter
+phi1 <- 0.5
+phi2 <- 0.2
+
+theta1 <- 0.4
+theta2 <- 0.6
+
+n <- 300
+
+# Seed agar hasil dapat direplikasi
+set.seed(123)
+```
+
+## [Bangkitkan ARMA(2,2) Secara Manual]{style="color:#db84c5;"}
+
+```{r}
+# Membuat error/residual
+epsilon <- rnorm(n, mean = 0, sd = 1)
+
+# Menyiapkan vektor data
+x_arma22 <- numeric(n)
+
+# Nilai awal
+x_arma22[1] <- epsilon[1]
+
+x_arma22[2] <- phi1 * x_arma22[1] +
+               epsilon[2] +
+               theta1 * epsilon[1]
+
+# Membentuk ARMA(2,2) secara manual
+for (t in 3:n) {
+  
+  x_arma22[t] <- phi1 * x_arma22[t-1] +
+                 phi2 * x_arma22[t-2] +
+                 epsilon[t] +
+                 theta1 * epsilon[t-1] +
+                 theta2 * epsilon[t-2]
+}
+
+# Mengubah menjadi objek time series
+y_arma22_manual <- ts(x_arma22)
+
+# Melihat 10 data pertama
+head(y_arma22_manual, 10)
+```
+
+## [Bangkitkan ARMA(2,2) Menggunakan arima.sim]{style="color:#db84c5;"}
+
+```{r}
+# Membentuk ARMA(2,2) menggunakan arima.sim
+set.seed(123)
+
+y_arma22 <- arima.sim(
+  model = list(
+    ar = c(phi1, phi2),
+    ma = c(theta1, theta2)
+  ),
+  n = n
+)
+
+# Melihat 10 data pertama
+head(y_arma22, 10)
+```
+
+## [Plot Data ARMA(2,2)]{style="color:#db84c5;"}
+
+```{r}
+plot(
+  y_arma22,
+  main = "Time Series ARMA(2,2)",
+  ylab = "X_t",
+  xlab = "Time"
+)
+```
+
+## [ACF]{style="color:#db84c5;"}
+
+```{r}
+acf(
+  y_arma22,
+  main = "ACF ARMA(2,2)"
+)
+```
+
+## [PACF]{style="color:#db84c5;"}
+
+```{r}
+pacf(
+  y_arma22,
+  main = "PACF ARMA(2,2)"
+)
+```
+
+## [EACF]{style="color:#db84c5;"}
+
+```{r}
+# Jika package TSA belum tersedia, install terlebih dahulu:
+# install.packages("TSA")
+
+library(TSA)
+
+eacf(y_arma22)
+```
+
+## [Pemeriksaan Kestasioneran]{style="color:#db84c5;"}
+
+```{r}
+# Plot data untuk melihat kestasioneran
+plot(
+  y_arma22,
+  main = "Pemeriksaan Kestasioneran ARMA(2,2)",
+  ylab = "X_t",
+  xlab = "Time"
+)
+
+# Melihat ACF
+acf(
+  y_arma22,
+  main = "ACF untuk Pemeriksaan Kestasioneran"
+)
+```
+
+## [Autokorelasi Teoretis ARMA(2,2)]{style="color:#db84c5;"}
+
+Autokorelasi teoretis model ARMA(2,2) dapat diperoleh menggunakan fungsi `ARMAacf()`.
+
+```{r}
+# Menghitung autokorelasi teoritis
+acf_teoritis <- ARMAacf(
+  ar = c(phi1, phi2),
+  ma = c(theta1, theta2),
+  lag.max = 10
+)
+
+acf_teoritis
+```
+
+## [Autokorelasi Sampel ARMA(2,2)]{style="color:#db84c5;"}
+
+```{r}
+# Menghitung ACF sampel
+acf_sampel <- acf(
+  y_arma22,
+  lag.max = 10,
+  plot = FALSE
+)
+
+# Membuat tabel ACF sampel
+acf_sampel_table <- data.frame(
+  Lag = 1:10,
+  ACF_Sampel = as.numeric(acf_sampel$acf)
+)
+
+acf_sampel_table
+```
+
+## [Perbandingan ACF Teoretis dan Sampel]{style="color:#db84c5;"}
+
+```{r}
+# Membuat tabel perbandingan
+perbandingan_acf <- data.frame(
+  Lag = 1:10,
+  ACF_Teoritis = acf_teoritis[1:10],
+  ACF_Sampel = as.numeric(acf_sampel$acf)
+)
+
+perbandingan_acf
+```
+
+## [Visualisasi ACF Teoretis dan Sampel]{style="color:#db84c5;"}
+
+```{r}
+# Plot ACF sampel
+acf(
+  y_arma22,
+  lag.max = 10,
+  main = "Perbandingan ACF ARMA(2,2)"
+)
+
+# Menambahkan nilai ACF teoritis
+points(
+  0:10,
+  acf_teoritis,
+  col = "red",
+  pch = 19
+)
+```
+
+## [Perbandingan Data Manual dan arima.sim]{style="color:#db84c5;"}
+
+```{r}
+# Membandingkan hasil simulasi manual dengan arima.sim
+
+head(
+  data.frame(
+    Manual = as.numeric(y_arma22_manual),
+    ARIMA_SIM = as.numeric(y_arma22)
+  ),
+  10
+)
+```
+
+## [Plot Perbandingan Simulasi]{style="color:#db84c5;"}
+
+```{r}
+# Membuat plot kedua hasil simulasi
+
+plot(
+  y_arma22_manual,
+  type = "l",
+  main = "Perbandingan Simulasi ARMA(2,2)",
+  ylab = "X_t",
+  xlab = "Time"
+)
+
+lines(
+  y_arma22,
+  lty = 2
+)
+
+legend(
+  "topright",
+  legend = c("Manual", "arima.sim"),
+  lty = c(1, 2)
+)
+```
+
+## [Kesimpulan]{style="color:#db84c5;"}
+
+```{r}
+cat(
+  "Model yang digunakan adalah ARMA(2,2) dengan:\n",
+  "phi1 =", phi1, "\n",
+  "phi2 =", phi2, "\n",
+  "theta1 =", theta1, "\n",
+  "theta2 =", theta2, "\n",
+  "Jumlah pengamatan =", n, "\n"
+)
+```
